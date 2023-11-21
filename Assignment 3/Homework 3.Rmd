@@ -1,0 +1,86 @@
+
+```{r}
+rm(list=ls())
+library(tidyverse)
+library(ggthemes)
+data(diamonds, package="ggplot2")
+```
+
+```{r}
+## 1.
+ggplot() + 
+  geom_histogram(aes(x = price), data = diamonds)
+
+ggplot() +
+  layer(data=diamonds, 
+        mapping=aes(x=price, y=..count..), 
+        geom="bar", 
+        stat="bin", 
+        position="identity", 
+        params=list(na.rm = FALSE, 
+                    orientation = NA, 
+                    binwidth = NULL, 
+                    bins = NULL, 
+                    pad = FALSE)) +
+  coord_cartesian()
+
+```
+
+```{r}
+## 2.
+ggplot() +
+  layer(data=diamonds, 
+        mapping=aes(x=price, y=..count..), 
+        geom="line", 
+        stat="bin", 
+        position="identity", 
+        params=list(na.rm = FALSE, 
+                    orientation = NA, 
+                    binwidth = NULL, 
+                    bins = NULL, 
+                    pad = FALSE)) +
+  coord_cartesian()
+
+```
+
+```{r}
+## 3.
+ggplot() +
+  layer(data=diamonds, 
+        mapping=aes(x=price, 
+                    y=..count..,
+                    fill=color), 
+        geom="bar", 
+        stat="bin", 
+        position="stack", 
+        params=list(na.rm = FALSE, 
+                    orientation = NA, 
+                    binwidth = NULL, 
+                    bins = NULL, 
+                    pad = FALSE)) +
+  coord_cartesian()
+```
+
+```{r}
+## 4.
+```
+
+The default position adjustment for a histogram is position="stack".
+
+```{r}
+ggplot() +
+  layer(data=diamonds, 
+        mapping=aes(x=price, 
+                    y=..count..,
+                    fill=color), 
+        geom="bar", 
+        stat="bin", 
+        position="dodge", 
+        params=list(na.rm = FALSE, 
+                    orientation = NA, 
+                    binwidth = NULL, 
+                    bins = NULL, 
+                    pad = FALSE)) +
+  coord_cartesian()
+```
+

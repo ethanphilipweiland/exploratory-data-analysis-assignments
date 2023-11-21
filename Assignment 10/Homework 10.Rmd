@@ -1,0 +1,82 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+---
+
+```{r}
+rm(list=ls())
+library(tidyverse)
+library(ade4)
+library(ggbiplot)
+```
+
+```{r}
+## 1.
+load("lattice.RData")
+hamster <- hamster
+
+hamster_noscale <- prcomp(hamster, scale.=FALSE)
+hamster_scale <- prcomp(hamster, scale.=TRUE)
+
+ggbiplot(hamster_noscale, scale=0) + ggtitle("Figure 1. Unstandardized Biplot of the Hamster Data")
+ggbiplot(hamster_scale, scale=0) + ggtitle("Figure 2. Standardized Biplot of the Hamster Data")
+
+vapply(X=hamster, FUN=var, FUN.VALUE=numeric(1))
+```
+
+In the biplot using the unstandardized variables, the first principal component explains 95.9% of the variance. In the biplot using the standardized variables, the first principal component explains 57.5% of the variance. In the hamster data set, there is significantly more variance in the liver weights (10.184645722 units squared) compared to the the other organs (the variance in the spleen weights is 0.003060484 units). Since the features contain different variances, the principal component in the biplot using the unstandardized variables overestimates the variance explained. The plot of the standardized features is more appropriate. Further evidence for using the standardized features is that the biplot arrows and biplot points are more evenly spread out. 
+
+```{r}
+## 2
+rm(list=ls())
+nyt_articles <- read_csv("nyt_articles.csv")
+class.labels <- nyt_articles$class.labels
+nyt_articles <- nyt_articles |>
+  select(-"class.labels")
+nonzero_columns <- colSums(nyt_articles) != 0
+nyt_articles <- nyt_articles[,c(nonzero_columns)]
+nyt_articles <- tibble(class.labels, nyt_articles)
+
+nyt_articles_no_scale <- prcomp(nyt_articles[,-1], scale.=F)
+nyt_articles_scale <- prcomp(nyt_articles[,-1], scale.=T)
+
+ggbiplot(nyt_articles_no_scale, scale.=0, var.axes=F, groups=class.labels) +
+  ggtitle("Figure 3. Unstandardized Biplot of the \nNYTimes Data")
+ggbiplot(nyt_articles_scale, scale=0, var.axes=F, groups=class.labels) +
+  ggtitle("Figure 4. Standardized Biplot \nof the NYTimes Data")
+
+```
+
+In the plot with the unstandardized features, the first principal component explains 2.1% of the variance and the second principal component explains 2.0% of the variance. In the plot with the standardized features, the first principal component explains 2.3% of the variance and the second principal component explains 1.8% of the variance. Normally, it is wise to use standardized features. However, unstandardized features are useful when all of the features are measured in the same units and of the same type, which they are in this case (word counts). In the unstandardized plot, the biplot points for the art group and for the music group do not overlap much. This indicates that the types of words in articles about art and in articles about music are different.
+
+```{r}
+## 3.
+
+  nyt_articles_art <- nyt_articles |>
+    filter(class.labels == "art") |>
+    select(-class.labels)
+  art_no_scale <- prcomp(nyt_articles_art, scale.=F)
+  loadings <- art_no_scale$rotation[,1:2] |> as.data.frame()
+  greatest_loadings <- (loadings |> arrange(desc(PC1)) |> rownames())[1:10]
+  greatest_loadings
+  loadings <- loadings[c(greatest_loadings),]
+  scores <- art_no_scale$x[,1:2]
+  biplot(scores, loadings, xlim=c(-0.55, 0.35))
+```
+
+```{r}
+  nyt_articles_music <- nyt_articles |>
+    filter(class.labels == "music") |>
+    select(-class.labels)
+  music_no_scale <- prcomp(nyt_articles_music, scale.=FALSE)
+  loadings <- music_no_scale$rotation[,1:2] |> as.data.frame()
+  greatest_loadings <- (loadings |> arrange(desc(PC1)) |> rownames())[1:10]
+  greatest_loadings
+  loadings <- loadings[c(greatest_loadings),]
+  scores <- art_no_scale$x[,1:2]
+  biplot(scores, loadings, xlim=c(-0.55, 0.35))
+```
+
+The features with the greatest loadings for the articles about art are words relating to art: "patterns", "color", "red", "yellow", etc. The features with the greatest loadings for the articles about music are words relating to music: "orchestra", "instruments", "jazz", "sounds", etc. For the biplot on music articles, all the biplot arrows point in the same direction along the first principal component although they vary along the second principal component. For the biplot on art articles, all of the biplot arrows point in roughly the same direction (are similar along the first and the second principal components). Since there is no overlap in the features with the greatest loadings for articles in these two classes, it would be wise to separate these articles into music and art before conducting a thorough analysis. 

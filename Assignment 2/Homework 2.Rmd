@@ -1,0 +1,57 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r}
+rm(list=ls())
+library(tidyverse)
+library(ggthemes)
+data <- read_csv("cytof_one_experiment.csv")
+```
+
+```{r}
+## 1.)
+data <- data %>%
+          pivot_longer(names(data), names_to="Protein_Identity", values_to="Protein_Level")
+data
+nrow(data) == 1750000
+```
+
+```{r}
+## 2.)
+median_and_mad <- data %>%
+                    group_by(Protein_Identity) %>%
+                    summarise(Median=median(Protein_Level), MAD=mad(Protein_Level))
+median_and_mad
+                          
+```
+
+```{r}
+## 3.)
+ggplot(median_and_mad, aes(x=MAD, y=Median)) +
+  geom_point() +
+  geom_abline(slope=1, intercept=0, col="red") +
+  xlab("Median Absolute Deviation") +
+  ylab("Median") +
+  ggtitle("Spread-Location Plot") +
+  theme_few()
+
+cor(median_and_mad$MAD, median_and_mad$Median)
+```
+
+The spread-location plot is a null plot; there is no clear association between the median absolute deviation and the median. This is noteworthy because the median absolute deviation is just a robust version of the median. The lack of a pattern indicates that the median is unstable in this dataset, and the median absolute deviation should be used as a measure of center. 
+
+```{r}
+## 4.) 
+library(dcldata)
+data(example_gymnastics_2)
+example_gymnastics_2 <- example_gymnastics_2 %>%
+  pivot_longer(names(example_gymnastics_2)[-1], names_to="event", values_to="score")
+example_gymnastics_2 <- example_gymnastics_2 %>% 
+  separate(event, into = c("event", "year"))
+example_gymnastics_2 <- example_gymnastics_2 %>%
+  arrange(desc(score))
+example_gymnastics_2
+```

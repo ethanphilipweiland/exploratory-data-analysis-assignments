@@ -1,0 +1,72 @@
+
+```{r}
+rm(list=ls())
+library(tidyverse)
+library(broom)
+
+## Importing data
+movie_budgets <- read_csv("movie_budgets.txt")
+movie_budgets <- separate(movie_budgets, col="title year length budget", into=c("title year length", "budget"), sep="\\s(?=(\\d+)(?!.*\\d))")
+movie_budgets <- separate(movie_budgets, col="title year length", into=c("title year", "length"), sep="\\s(?=(\\d+)(?!.*\\d))")
+movie_budgets <- separate(movie_budgets, col="title year", into=c("title", "year"), sep="\\s(?=(\\d+)(?!.*\\d))")
+movie_budgets$year <- as.numeric(movie_budgets$year)
+movie_budgets$length <- as.numeric(movie_budgets$length)
+movie_budgets$budget <- as.numeric(movie_budgets$budget)
+movie_budgets <- movie_budgets |>
+  mutate(log10budget = log10(budget)) |>
+  select(-budget)
+
+```
+
+```{r}
+ggplot(data=movie_budgets, aes(x=year, y=log10budget)) +
+  geom_jitter(alpha=.2) +
+  facet_wrap(~ cut_number(length, 10), ncol=5) +
+  stat_smooth(method="loess", formula="y~x")
+
+ggplot(data=movie_budgets, aes(x=length, y=log10budget)) +
+  geom_jitter(alpha=.2) +
+  facet_wrap(~ cut_number(year, 10), ncol=5) +
+  stat_smooth(method="loess", formula="y~x")
+```
+
+First, I examined the coplot of log10budget vs. year, faceted out by different intervals of length. The relationship between year and log10 budget is horizontal at the lowest interval of length but linear at the highest interval of length. Thus, the relationship between year and log10budget varies by the value of length and an interaction is needed in the model. While the relationship between year and log10budget is straight in the lowest and highest intervals of length, it is nonparametric in the intermediate intervals. So I will fit local, rather than global, regressions for year. Second, I examined the coplot of log10budget vs. length faceted out by ten different intervals of year. In each interval, the relationship between length and log10budget is quadratic. Thus, I will use global quadratic fits for length in the loess model. In both coplots, there are a few outlier points, which is to be expected in a dataset with 5,183 observations. To account for this, I will incorporate a robust fit using the ' family= "symmetric" ' argument in the LOESS function.
+
+```{r}
+loess_model <- loess(log10budget ~ year*length, data=movie_budgets, parametric="length", drop.square=FALSE, family="symmetric", span=.8)
+```
+
+```{r}
+ggplot(data=augment(loess_model), aes(x=.fitted, y=.resid)) +
+  geom_point() +
+  stat_smooth(formula="y~x", method="loess", se=F)
+
+ggplot(data=augment(loess_model), aes(x=.fitted, y=abs(.resid))) +
+  geom_point() +
+  stat_smooth(formula="y~x", method="loess", se=F)
+
+ggplot(data=augment(loess_model)) +
+  stat_qq(aes(sample=.resid)) +
+  geom_abline(slope=1, intercept=0)
+```
+
+After fitting a LOESS model with these parameters, I plotted the residuals vs. the fitted values, the absolute value of the residuals vs. the fitted values, and a Q-Normal plot of the residuals. The plot of the residuals vs. the fitted values is a null plot and the plot of the absolute value of the residuals vs. the fitted values is also a null plot. These plots indicate that the model fits. I experimented with the span, but everything made these two plots worse, so I will stick with the default value of span = 0.75. The Q-Normal plot of the residuals deviates slightly from the identity line towards the tails. This indicates that I should avoid using confidence intervals and inference developed assuming Normal errors. Finally, the three plots show that there are some outliers. This validates my decision to use a robust fit when fitting the LOESS model. 
+
+```{r}
+movie_budgets_grid <- data.frame(expand.grid(year = seq(min(movie_budgets$year),
+                                                    max(movie_budgets$year),
+                                                    length.out=10),
+                                             length = seq(min(movie_budgets$length),
+                                                          max(movie_budgets$length),
+                                                          length.out=10)))
+movie_budgets_predictions <- augment(loess_model, newdata = movie_budgets_grid)
+
+ggplot(data=movie_budgets_predictions, aes(x=year, y=.fitted)) +
+  geom_point() +
+  facet_wrap(~ cut_number(length, 10), ncol=5) +
+  ylab("LOESS Fitted Values") +
+  xlab("Year") +
+  ggtitle("Fitted Values by Year Faceted by Length")
+```
+
+The plot above shows the fitted values from the LOESS smoother by year, faceted out by length. The relationship between year and the fitted values varies depending on movie length; this results from the interaction between year and length. Additionally, the relationship between year and the fitted values is nonparametric given some values of length; this is a result of the LOESS model fitting local regressions for year. Overall, except for shorter movies, as year increases the logged movie budget (predicted by the LOESS model) does as well. 

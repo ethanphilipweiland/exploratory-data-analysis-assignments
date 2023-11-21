@@ -1,0 +1,37 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+```{r}
+rm(list=ls())
+library(tidyverse)
+seaice <- read_csv("N-seaice-extent-daily.csv")
+```
+
+```{r}
+## 1.)
+seaice.summarized <- seaice %>% 
+  group_by(Year, Month) %>% 
+  summarise(Extent = mean(Extent))
+nrow(seaice.summarized)
+```
+
+```{r, fig.width=10, fig.height=3}
+## 2.)
+ggplot(data=seaice.summarized, aes(x=Year, y=Extent)) +
+  geom_point() +
+  geom_smooth(method="loess", formula="y~x", se=F, col="red") +
+  facet_grid(~ Month)
+```
+
+```{r, fig.width=10, fig.height=3}
+## 3.)
+ggplot(data=seaice, aes(x=Year, y=Extent)) +
+  geom_point(alpha=.2) +
+  geom_smooth(method="loess", formula="y~x", se=F, col="red") +
+  facet_grid(~ Month)
+```
+
+*Question 4:* Both of the plots tell the same story. Over the past four decades, the extent of sea ice, whether measured by daily average or monthly average, has decreased. The decrease has been more drastic in the late summer (e.g., August and September) than in the winter (e.g., January and Febuary). The baseline level of sea ice varies by month; the baseline level of sea ice is higher in the winter months and lower in the summer months. The LOESS smoother is more helpful for the plot of daily averages since there is a greater magnitude of points. In this case, the smoother helps to cut through the noise and make sense of the cloud of data. 
+

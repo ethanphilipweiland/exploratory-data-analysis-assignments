@@ -1,0 +1,79 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r}
+rm(list=ls())
+library(tidyverse)
+library(broom)
+library(rstanarm)
+data(roaches, package="rstanarm")
+```
+
+```{r}
+## 1
+poisson_model <- glm(y ~ roach1 + treatment + senior, 
+                     data=roaches,
+                     offset=log(exposure2),
+                     family="poisson")
+```
+
+```{r}
+## 2
+summary(roaches)
+grid <- expand_grid(roach1 =seq(min(roaches$roach1), max(roaches$roach1), length.out=5),
+                    treatment=c(min(roaches$treatment), max(roaches$treatment)), 
+                    senior=c(min(roaches$senior), max(roaches$senior)), 
+                    exposure2=seq(min(roaches$exposure2), max(roaches$exposure2), length.out=10))
+
+ggplot(data=augment(poisson_model, newdata=grid),
+       aes(x=treatment, y=.fitted)) +
+  geom_jitter(width=0.05, height=0.0, alpha=0.5) +
+  geom_smooth(method="loess", formula="y~x", se=F) +
+  labs(title="Predicted Roach Count vs. Treatment",
+       y="Fitted Values",
+       x="Treatment (Y/N)")
+
+ggplot(data=augment(poisson_model, newdata=grid),
+       aes(x=senior, y=.fitted)) +
+  geom_jitter(width=0.05, height=0.0, alpha=0.5) +
+  geom_smooth(method="loess", formula="y~x", se=F) +
+  labs(title="Predicted Roach Count vs. Senior",
+       y="Fitted Values",
+       x="Senior-Only Building (Y/N)")
+
+ggplot(data=augment(poisson_model, newdata=grid),
+       aes(x=treatment, y=.fitted)) +
+  geom_jitter() +
+  facet_grid(cols = vars(roach1)) +
+  geom_smooth(method="loess", formula="y~x", se=F) +
+  labs(title="Predicted Roach Count vs. Treatment\nFaceted by Roach Count before Treatment",
+       x="Treatment (Y/N)",
+       y="Fitted Values")
+
+ggplot(data=augment(poisson_model, newdata=grid),
+       aes(x=senior, y=.fitted)) +
+  geom_jitter() +
+  facet_grid(cols = vars(roach1)) +
+  geom_smooth(method="loess", formula="y~x", se=F) +
+  labs(title="Predicted Roach Count vs. Senior\nFaceted by Roach Count before Treatment",
+       x="Senior-Only Building (Y/N)",
+       y="Fitted Values")
+```
+
+*Interpretation:* The plot of the fitted values vs. treatment displays that receiving a treatment results in a decrease in the the predicted number of roaches that were trapped, although the decrease is a slight decrease. The plot of the fitted values vs. the building being a senior-only building displays the same relationship. The coplots that display these two simple relationships controlling for the roach count before treatment demonstrate the importance of conditioning on this preliminary count. Across all five facets of original roach count, the relationship between receiving a treatment and the fitted values is more negative than when examining the relationship between receiving a treatment and the fitted values on their own. The same is true of the relationship between fitted values and a building being a seniors-only building. Since no interaction is specified in the model, the relationship is similar in each facet in both coplots. 
+
+```{r}
+## 3.
+ggplot(data=data.frame(pearson_residuals = residuals(poisson_model, type="pearson"),
+                       log_fitted_values = log(fitted.values(poisson_model) + 1)),
+       aes(x=log_fitted_values, y=pearson_residuals)) +
+  geom_point() +
+  labs(title="Residual Plot", 
+       y="Pearson Residual",
+       x="Fitted Values (Logged)")
+```
+
+*Answer:* In the theory behind the poisson model, the variance is equal to the expected value. So, in a plot of the residuals vs. the fitted values we expect the variance of the residuals to increase as the fitted values increase. This is not the case here as the highest variance occurs at moderate fitted values. Overdispersion may be the cause and a disperson parameter could be incorporated to solve it. 
